@@ -1,0 +1,88 @@
+---
+title: "STA160 Project Code"
+author: "Hayat Botan"
+date: "2024-12-03"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+data160 <- read.csv("C:\\Users\\19162\\Downloads\\ObesityDataSet_raw_and_data_sinthetic.csv")
+
+names(data160)
+head(data160)
+summary(data160)
+
+```
+
+```{r}
+#height vs. weight by obesity level 
+
+library(ggplot2)
+
+ggplot(data160, aes(x = Height, y = Weight, color = NObeyesdad)) +
+  geom_point(alpha = 0.6) +
+  labs(title = "Height vs. Weight by Obesity Level", x = "Height", y = "Weight") +
+  theme_minimal()
+
+```
+
+```{r}
+#weight distribution by obesity level and family history
+
+ggplot(data160, aes(x = NObeyesdad, y = Weight, fill = family_history_with_overweight)) +
+  geom_boxplot() +
+  labs(title = "Weight Distribution by Obesity Level and Family History",
+       x = "Obesity Level",
+       y = "Weight") +
+  scale_fill_brewer(palette = "Pastel1") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+```{r}
+#Kruskal-Wallis & Dunn's Test 
+
+library(FSA)
+
+variables <- c("Weight", "FAF", "CH2O", "NCP")  
+
+for (var in variables) {
+  cat("\nKruskal-Wallis Test for", var, "\n")
+  kruskal_results <- kruskal.test(data160[[var]] ~ data160$NObeyesdad)
+  print(kruskal_results)
+}
+
+dunn_weight <- dunnTest(Weight ~ NObeyesdad, data = data160, method = "bonferroni")
+cat("\nDunn's Test Results for Weight (Post Hoc)\n")
+print(dunn_weight)
+
+dunn_physical_activity <- dunnTest(FAF ~ NObeyesdad, data = data160, method = "bonferroni")
+cat("\nDunn's Test Results for Physical Activity (Post Hoc)\n")
+print(dunn_physical_activity)
+
+dunn_water_intake <- dunnTest(CH2O ~ NObeyesdad, data = data160, method = "bonferroni")
+cat("\nDunn's Test Results for Water Intake (Post Hoc)\n")
+print(dunn_water_intake)
+
+dunn_snacking <- dunnTest(NCP ~ NObeyesdad, data = data160, method = "bonferroni")
+cat("\nDunn's Test Results for Snacking Patterns (Post Hoc)\n")
+print(dunn_snacking)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
