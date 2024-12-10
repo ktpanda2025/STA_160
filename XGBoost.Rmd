@@ -1,0 +1,115 @@
+---
+title: "XGBoost"
+author: "Chieh-Ya Chang"
+date: "2024-12-09"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r}
+library(xgboost)
+library(data.table)
+library(caret)
+library(tidyverse)
+library(dplyr)
+```
+
+```{r}
+ObesityDataSet <- read.csv("/Users/zhangjieya/Desktop/ObesityDataSet.csv")
+```
+
+
+```{r}
+set.seed(1234)
+ObesityDataSet <- ObesityDataSet[sample(1:nrow(ObesityDataSet)), ]
+head(ObesityDataSet)
+```
+
+```{r}
+#age+physical activity(FAF)+water intake(CH2O)+number of main meals(NCP)
+#vegetable consumption(FCVC)+tech device usage(TUE)+obesity levels(NObeyesdad)
+ObesityLabels <- ObesityDataSet %>%
+    select(Age, FAF, CH2O, NCP, FCVC, TUE, NObeyesdad)
+
+head(ObesityLabels)
+```
+
+
+```{r}
+ObesityLabels$NObeyesdad <- recode(ObesityLabels$NObeyesdad,
+                                   "Insufficient_Weight" = 0,
+                                   "Normal_Weight" = 1,
+                                   "Obesity_Type_I" = 2,
+                                   "Obesity_Type_II" = 3,
+                                   "Obesity_Type_III" = 4,
+                                   "Overweight_Level_I" = 5,
+                                   "Overweight_Level_II" = 6)
+```
+
+
+```{r}
+set.seed(137)
+#split into training (80%) and testing set (20%)
+parts = createDataPartition(ObesityLabels$NObeyesdad, p = 0.8, list = F)
+train = ObesityLabels[parts, ]
+test = ObesityLabels[-parts, ]
+#define predictor and response variables in training set
+train_x = data.matrix(train[, -7])
+train_y = train[,7]
+#define predictor and response variables in testing set
+test_x = data.matrix(test[, -7])
+test_y = test[, 7]
+#define final training and testing sets
+xgb_train = xgb.DMatrix(data = train_x, label = train_y)
+xgb_test = xgb.DMatrix(data = test_x, label = test_y)
+```
+
+
+```{r}
+#define watchlist
+watchlist = list(train=xgb_train, test=xgb_test)
+#fit XGBoost model and display training and testing data at each round
+#The "multi:softmax" is used for multi-class classification tasks
+#where the target variable has more than two distinct classes.
+model = xgb.train(data = xgb_train, max.depth = 3, watchlist=watchlist,
+                  nrounds = 100, eval_metric = "mlogloss",
+                  objective = "multi:softmax", num_class = 7)
+
+```
+
+```{r}
+#define final model
+final = xgboost(data = xgb_train, max.depth = 3, nrounds = 99, objective = "multi:softmax",
+                 num_class = 7, verbose = 0)
+```
+
+
+```{r}
+preds <- predict(model, test_x)
+confusionMatrixResult <- confusionMatrix(factor(preds), factor(test_y))
+print(confusionMatrixResult)
+sensitivity_values <- confusionMatrixResult$byClass[, "Sensitivity"]
+class_names <- c("Insufficient Weight", "Normal Weight", "Obesity Type I", 
+                 "Obesity Type II", "Obesity Type III", 
+                 "Overweight Level I", "Overweight Level II")
+sensitivity_table <- data.frame(Class = class_names,
+                                Sensitivity = sensitivity_values)
+print(sensitivity_table)
+```
+
+
+```{r}
+predictions <- predict(final, xgb_test)
+accuracy <- mean(predictions == test_y)
+print(paste("Test Accuracy:", round(accuracy * 100, 2), "%"))
+```
+
+
+```{r}
+importance_matrix <- xgb.importance(model = final)
+print(importance_matrix)
+xgb.plot.importance(importance_matrix, main = "Feature Importance")
+```
+
